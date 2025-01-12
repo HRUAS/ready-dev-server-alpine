@@ -2,6 +2,7 @@
 import boto3
 from prettytable import PrettyTable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import sys
 
 def get_resources_for_region(region):
     # Initialize clients for the current region
@@ -85,6 +86,8 @@ def list_all_resources():
     # Get all regions
     ec2_client = boto3.client("ec2")
     regions = [region["RegionName"] for region in ec2_client.describe_regions()["Regions"]]
+    total_regions = len(regions)
+    completed_regions = 0
 
     # Use ThreadPoolExecutor to handle multithreading
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -98,10 +101,18 @@ def list_all_resources():
                 table.add_row([resources["region"], resources["nat_gateways"], resources["elastic_ips"],
                                resources["endpoints"], resources["vpn_connections"], resources["transit_gateways"],
                                resources["ec2_instances"]])
+
+                # Update progress
+                completed_regions += 1
+                progress = (completed_regions / total_regions) * 100
+                sys.stdout.write(f"\rProgress: {completed_regions}/{total_regions} regions completed ({progress:.2f}%)")
+                sys.stdout.flush()
+
             except Exception as e:
-                print(f"Error processing region {region}: {str(e)}")
+                print(f"\nError processing region {region}: {str(e)}")
 
     # Print the table
+    print("\n")
     print(table)
 
 if __name__ == "__main__":
